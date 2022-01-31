@@ -8,11 +8,13 @@ services:
     # build: ./
     env_file:
       - .env-namecheap
+      - .env-nginx
     environment:
       - DRY_RUN=true # INFO: FOR TEST
-    entrypoint: "/home/certonly.sh && /home/renew.sh" # WRAN: DRY_RUN do not make cert
+    entrypoint: "/home/certonly.sh && /home/renew.sh" # WRAN: DRY_RUN=true can't start renew
     # entrypoint: "/home/renew.sh"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./certonly.sh:/home/certonly.sh
       - ./renew.sh:/home/renew.sh
       - ./letsencrypt-namecheap-dns-auth.sh:/home/letsencrypt-namecheap-dns-auth.sh
