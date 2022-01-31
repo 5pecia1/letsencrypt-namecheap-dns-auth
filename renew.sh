@@ -17,7 +17,7 @@ fi
 
 trap exit TERM
 while :; do
-    # certbot $TEST_OPTION --text --agree-tos --email ${CERT_EMAIL} --cert-name ${CERT_DOMAIN} --manual --preferred-challenges dns --expand --renew-by-default --non-interactive --manual-public-ip-logging-ok renew --manual-auth-hook=/home/letsencrypt-namecheap-dns-auth.sh
+    certbot $TEST_OPTION --text --agree-tos --email ${CERT_EMAIL} --cert-name ${CERT_DOMAIN} --manual --preferred-challenges dns --expand --renew-by-default --non-interactive --manual-public-ip-logging-ok renew --manual-auth-hook=/home/letsencrypt-namecheap-dns-auth.sh
 
     var="$NGINX_DOCKER_CONTAINERS"
     for CON in $var; do
