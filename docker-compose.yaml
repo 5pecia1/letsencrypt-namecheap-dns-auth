@@ -10,14 +10,13 @@ services:
       - .env-namecheap
     environment:
       - DRY_RUN=true # INFO: FOR TEST
-    entrypoint: "/home/certonly.sh && /home/renew.sh"
+    entrypoint: "/home/certonly.sh && /home/renew.sh" # WRAN: DRY_RUN do not make cert
     # entrypoint: "/home/renew.sh"
     volumes:
       - ./certonly.sh:/home/certonly.sh
       - ./renew.sh:/home/renew.sh
       - ./letsencrypt-namecheap-dns-auth.sh:/home/letsencrypt-namecheap-dns-auth.sh
       - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
       - ./certbot/log:/var/log
     labels:
       5hare: "certbot"
