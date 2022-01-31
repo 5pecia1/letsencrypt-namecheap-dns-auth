@@ -4,7 +4,7 @@ services:
   certbot:
     restart: always
     container_name: certbot
-    image: 5pecia1/certbot:latest
+    image: 5pecia1/certbot-namecheap:latest
     # build: ./
     env_file:
       - .env-namecheap
