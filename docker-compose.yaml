@@ -1,0 +1,23 @@
+version: "3"
+
+services:
+  certbot:
+    restart: always
+    container_name: certbot
+    # image: certbot/certbot:latest
+    build: ./
+    env_file:
+      - .env-namecheap
+    environment:
+      - DRY_RUN=true # INFO: FOR TEST
+    entrypoint: "/home/certonly.sh && /home/renew.sh"
+    # entrypoint: "/home/renew.sh"
+    volumes:
+      - ./certonly.sh:/home/certonly.sh
+      - ./renew.sh:/home/renew.sh
+      - ./letsencrypt-namecheap-dns-auth.sh:/home/letsencrypt-namecheap-dns-auth.sh
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/log:/var/log
+    labels:
+      5hare: "certbot"

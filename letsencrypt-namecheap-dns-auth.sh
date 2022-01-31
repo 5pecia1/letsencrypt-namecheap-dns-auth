@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-####### !!!!!!!!!!!!!  W A R N I N G !!!!!!!!!!!!! ####### 
+####### !!!!!!!!!!!!!  W A R N I N G !!!!!!!!!!!!! #######
 #
 #  NameCheap only has an API for setting all host DNS records
 #  i.e., we can't simply update one TXT row
@@ -60,19 +60,18 @@
 # NameCheap's production API service base
 SERVICEURL="https://api.namecheap.com/xml.response"
 
-
 # --------------- Start configurable section --------------------------------
 
 # your NameCheap login ID
 # (their docs mention both API User and NC User, but they are the same
 # in our scenario because we are editing our own records and not one of our 'clients')
-NCUSER=myUserID
+# NCUSER=myUserID
 
 # your whitelisted IP address
-CLIENTIP=8.8.8.8
+# CLIENTIP=8.8.8.8
 
 # your API Key
-NCAPIKEY=9zzzzzzzzzzzzzzzzzzzzzzzzzzzzzf4
+# NCAPIKEY=9zzzzzzzzzzzzzzzzzzzzzzzzzzzzzf4
 
 #
 # SANDBOX TESTING
@@ -84,43 +83,49 @@ NCAPIKEY=9zzzzzzzzzzzzzzzzzzzzzzzzzzzzzf4
 #
 #SERVICEURL="https://api.sandbox.namecheap.com/xml.response"
 #NCAPIKEY=2czzzzzzzzzzzzzzzzzzzzzzzzzzzz1c
-#CERTBOT_DOMAIN=crosswire.org
-#CERTBOT_VALIDATION=xyzzq
-
+# CERTBOT_DOMAIN=test.userdomain.com
+# CERTBOT_VALIDATION=abc
 
 # number of seconds to wait between checks for our certbot validation records to finish propagation
 WAITSECONDS=10
 
 # if we are running a local bind server to cache DNS entries, we probably want to flush our cache
 # between each check for our challenge certificate
-FLUSH_LOCAL_BIND_SERVER=true
+FLUSH_LOCAL_BIND_SERVER=false
 
 # --------------- End configurable section --------------------------------
-
 
 # Let's grab all our current DNS records
 
 TLD=$(echo ${CERTBOT_DOMAIN} | rev | cut -d. -f1 | rev)
 SLD=$(echo ${CERTBOT_DOMAIN} | rev | cut -d. -f2 | rev)
+HOST=$(echo ${CERTBOT_DOMAIN} | rev | cut -d. -f3- | rev)
 
+if [[ -z "$HOST" || "$HOST" == "*" ]]; then
+	CHALLENGE_HOST="_acme-challenge"
+else
+	CHALLENGE_HOST="_acme-challenge.${HOST}"
+fi
+
+echo $CHALLENGE_HOST
 
 APICOMMAND="namecheap.domains.dns.getHosts&SLD=${SLD}&TLD=${TLD}"
 wget -O /tmp/getHosts.xml "${SERVICEURL}?ClientIp=${CLIENTIP}&ApiUser=${NCUSER}&ApiKey=${NCAPIKEY}&UserName=${NCUSER}&Command=${APICOMMAND}"
 
 APICOMMAND="namecheap.domains.dns.setHosts&SLD=${SLD}&TLD=${TLD}"
-ENTRYNUM=1;
+ENTRYNUM=1
 while IFS= read -r line; do
-	NAME=$(echo $line|sed 's/^.* Name="\([^"]*\)".*$/\1/g')
-	TYPE=$(echo $line|sed 's/^.* Type="\([^"]*\)".*$/\1/g')
-	ADDRESS=$(echo $line|sed 's/^.* Address="\([^"]*\)".*$/\1/g')
-	MXPREF=$(echo $line|sed 's/^.* MXPref="\([^"]*\)".*$/\1/g')
-	TTL=$(echo $line|sed 's/^.* TTL="\([^"]*\)".*$/\1/g')
+	NAME=$(echo $line | sed 's/^.* Name="\([^"]*\)".*$/\1/g')
+	TYPE=$(echo $line | sed 's/^.* Type="\([^"]*\)".*$/\1/g')
+	ADDRESS=$(echo $line | sed 's/^.* Address="\([^"]*\)".*$/\1/g')
+	MXPREF=$(echo $line | sed 's/^.* MXPref="\([^"]*\)".*$/\1/g')
+	TTL=$(echo $line | sed 's/^.* TTL="\([^"]*\)".*$/\1/g')
 
 	# apparently 1799 is "auto"
 	# if we specify what we received in getHosts, we don't preserve 'auto'
 	# so we are specifying auto here
 	TTL=1799
-      
+
 	if [[ "${NAME}" == "_acme-challenge" ]]; then
 		# skip all existing _acme-challenge entries
 		true
@@ -129,13 +134,13 @@ while IFS= read -r line; do
 
 		ENTRYNUM=$((${ENTRYNUM} + 1))
 	fi
-done <<< "$(grep "<host " /tmp/getHosts.xml)"
-
+done <<<"$(grep "<host " /tmp/getHosts.xml)"
 
 # OK, now let's add our new acme challenge verification record
-APICOMMAND="${APICOMMAND}&HostName${ENTRYNUM}=_acme-challenge&RecordType${ENTRYNUM}=TXT&Address${ENTRYNUM}=${CERTBOT_VALIDATION}"
+APICOMMAND="${APICOMMAND}&HostName${ENTRYNUM}=${CHALLENGE_HOST}&RecordType${ENTRYNUM}=TXT&Address${ENTRYNUM}=${CERTBOT_VALIDATION}"
 
 # Finally, we'll update all host DNS records
+# echo "${SERVICEURL}?ClientIp=${CLIENTIP}&ApiUser=${NCUSER}&ApiKey=${NCAPIKEY}&UserName=${NCUSER}&Command=${APICOMMAND}"
 wget -O /tmp/testapi.out "${SERVICEURL}?ClientIp=${CLIENTIP}&ApiUser=${NCUSER}&ApiKey=${NCAPIKEY}&UserName=${NCUSER}&Command=${APICOMMAND}"
 
 # Actually, FINALLY, we need to wait for our records to propagate before letting certbot continue.
@@ -151,10 +156,11 @@ while [[ "${FOUND}" != "true" ]]; do
 		rndc reload
 	fi
 
-	CURRENT_ACME_VALIDATION=$(dig -t TXT _acme-challenge.${CERTBOT_DOMAIN}|grep "^_acme-challenge.${CERTBOT_DOMAIN}."|cut -d\" -f 2)
+	CURRENT_ACME_VALIDATION=$(dig -t TXT ${CHALLENGE_HOST}.${SLD}.${TLD} | grep "^${CHALLENGE_HOST}.${SLD}.${TLD}." | cut -d\" -f 2)
 	if [[ "${CERTBOT_VALIDATION}" == "${CURRENT_ACME_VALIDATION}" ]]; then
 		FOUND=true
 		echo "Found!"
+		sleep ${WAITSECONDS}
 	else
 		echo "Not yet found."
 	fi
