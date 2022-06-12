@@ -1,5 +1,8 @@
 # automatic letsencrypt namecheap dns auth with docker
 
+This is an automation code for DNS challenge that can be used when HTTP challenge cannot be done while using namecheap.
+In my case, I had no choice but to choose DNS challenge because the telecommunication carrier blocked port 80 from being used.
+
 ## Start
 
 1. set namecheap api
